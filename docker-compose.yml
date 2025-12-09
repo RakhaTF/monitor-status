@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  # 1. Backend API
+  api:
+    build: ./backend
+    container_name: monitor_api
+    restart: on-failure
+    ports:
+      - "3000:3000"
+    environment:
+      DB_HOST: host.docker.internal
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: ""
+      DB_NAME: monitoring_db
+    networks:
+      - monitor_net
+
+  # 2. Frontend (Nginx)
+  web:
+    image: nginx:alpine
+    container_name: monitor_web
+    ports:
+      - "8080:80"
+    volumes:
+      - ./frontend/index.html:/usr/share/nginx/html/index.html:ro
+    networks:
+      - monitor_net
+
+networks:
+  monitor_net:
+    driver: bridge

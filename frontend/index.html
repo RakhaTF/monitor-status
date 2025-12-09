@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Monitor</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <style>
+        :root {
+            --bg-dark: #0b0c10;
+            --card-bg: #111418;
+            --border: #1f2937;
+            --text-main: #e5e7eb;
+            --text-muted: #6b7280;
+            --green: #10b981;
+            --green-glow: rgba(16, 185, 129, 0.2);
+            --red: #ef4444;
+            --red-glow: rgba(239, 68, 68, 0.2);
+            --yellow: #f59e0b;
+            --yellow-glow: rgba(245, 158, 11, 0.2);
+        }
+        * { box-sizing: border-box; }
+        body { background-color: var(--bg-dark); color: var(--text-main); font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 20px; height: 100vh; display: flex; flex-direction: column; }
+        
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid var(--border); }
+        .brand { display: flex; align-items: center; gap: 10px; }
+        .status-dot { height: 12px; width: 12px; background-color: var(--green); border-radius: 50%; box-shadow: 0 0 10px var(--green); }
+        h1 { margin: 0; font-size: 24px; letter-spacing: 1px; text-transform: uppercase; }
+        .subtitle { color: var(--text-muted); font-size: 14px; margin-top: 5px; }
+        .controls { display: flex; gap: 10px; align-items: center; }
+        button { background: var(--card-bg); border: 1px solid var(--border); color: var(--text-main); padding: 8px 16px; cursor: pointer; border-radius: 4px; font-size: 13px; transition: all 0.2s; }
+        button:hover { border-color: var(--text-muted); }
+
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 25px; }
+        .card { background-color: var(--card-bg); border: 1px solid var(--border); border-radius: 6px; padding: 15px; position: relative; overflow: hidden; }
+        .card-label { font-size: 11px; text-transform: uppercase; color: var(--text-muted); letter-spacing: 1px; margin-bottom: 10px; }
+        .card-value { font-size: 28px; font-weight: bold; font-family: 'Courier New', monospace; }
+        .card-sub { font-size: 14px; color: var(--text-muted); }
+        .kpi-icon { position: absolute; right: 15px; top: 15px; font-size: 18px; }
+        .text-green { color: var(--green); }
+        .text-red { color: var(--red); }
+        .text-yellow { color: var(--yellow); }
+
+        .main-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; flex-grow: 1; }
+        .section-header { display: flex; justify-content: space-between; margin-bottom: 15px; color: var(--text-muted); font-size: 13px; font-weight: bold; text-transform: uppercase; }
+        
+        .service-row { background: var(--card-bg); border: 1px solid var(--border); padding: 15px; margin-bottom: 10px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; transition: transform 0.1s; }
+        .service-row:hover { transform: translateX(2px); border-color: #374151; }
+        .svc-info h3 { margin: 0 0 5px 0; font-size: 15px; }
+        .svc-id { font-family: monospace; color: var(--text-muted); font-size: 12px; }
+        .svc-meta { text-align: right; }
+        .last-hb-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; }
+        .last-hb-val { font-size: 13px; margin-bottom: 5px; display: block; font-family: 'Courier New', monospace; }
+        .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; border: 1px solid transparent; }
+        .badge-operational { color: var(--green); border-color: var(--green); background: var(--green-glow); }
+        .badge-outage { color: var(--red); border-color: var(--red); background: var(--red-glow); }
+        .badge-stale { color: var(--yellow); border-color: var(--yellow); background: var(--yellow-glow); }
+
+        .sidebar { display: flex; flex-direction: column; gap: 20px; }
+        .chart-container { display: flex; justify-content: center; align-items: center; padding: 20px; height: 200px; position: relative; }
+        .donut { width: 140px; height: 140px; border-radius: 50%; background: conic-gradient(var(--border) 0% 100%); position: relative; }
+        .donut::after { content: ""; position: absolute; inset: 25px; background: var(--card-bg); border-radius: 50%; }
+        .chart-legend { display: flex; justify-content: center; gap: 15px; font-size: 12px; margin-top: -10px;}
+        .legend-item { display: flex; align-items: center; gap: 5px; color: var(--text-muted); }
+        .dot { width: 8px; height: 8px; border-radius: 50%; }
+        
+        .console-box { background: #000; border: 1px solid var(--border); border-radius: 6px; padding: 10px; font-family: 'Courier New', monospace; font-size: 12px; height: 200px; overflow-y: auto; color: var(--green); display: flex; flex-direction: column; }
+        .log-entry { margin-bottom: 4px; opacity: 0.8; }
+        .log-entry::before { content: "> "; color: var(--text-muted); }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="brand">
+            <div class="status-dot"></div>
+            <div>
+                <h1>System Status</h1>
+                <div class="subtitle">Real-time monitoring infrastructure</div>
+            </div>
+        </div>
+        <div class="controls">
+            <label style="font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 5px;">
+                <input type="checkbox" id="auto-refresh" checked> Auto-Refresh
+            </label>
+            <button onclick="fetchData('MANUAL')"><i class="fas fa-sync"></i> Refresh</button>
+        </div>
+    </header>
+
+    <div class="kpi-grid">
+        <div class="card"><div class="card-label">Operational</div><div class="card-value text-green" id="kpi-ok">0</div><i class="fas fa-circle kpi-icon text-green"></i></div>
+        <div class="card"><div class="card-label">Outage</div><div class="card-value text-red" id="kpi-down">0</div><i class="fas fa-times-circle kpi-icon text-red"></i></div>
+        <div class="card"><div class="card-label">Stale / Warning</div><div class="card-value text-yellow" id="kpi-stale">0</div><i class="fas fa-exclamation-triangle kpi-icon text-yellow"></i></div>
+        <div class="card">
+            <div class="card-label">System Uptime</div>
+            <div class="card-value" id="kpi-uptime">0.0%</div>
+            <div style="height: 4px; background: #333; margin-top: 10px; border-radius: 2px;"><div id="uptime-bar" style="height: 100%; background: var(--text-main); width: 0%;"></div></div>
+        </div>
+    </div>
+
+    <div class="main-layout">
+        <div>
+            <div class="section-header"><span>Active Services</span><span id="last-updated-time">Updated: --:--:--</span></div>
+            <div id="service-list"><div style="padding: 20px; text-align: center; color: var(--text-muted)">Connecting...</div></div>
+        </div>
+        <div class="sidebar">
+            <div class="card">
+                <div class="card-label">Health Distribution</div>
+                <div class="chart-container"><div class="donut" id="health-donut"></div></div>
+                <div class="chart-legend">
+                    <div class="legend-item"><div class="dot" style="background: var(--red)"></div> Outage</div>
+                    <div class="legend-item"><div class="dot" style="background: var(--yellow)"></div> Stale</div>
+                    <div class="legend-item"><div class="dot" style="background: var(--green)"></div> Ok</div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-label">Event Log</div>
+                <div class="console-box" id="console-log"><div class="log-entry">Monitor initialized</div></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api/status';
+        let refreshInterval;
+
+        function log(msg) {
+            const box = document.getElementById('console-log');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            const time = moment().utcOffset(7).format('HH:mm:ss');
+            entry.innerText = `[${time}] ${msg}`;
+            box.prepend(entry);
+        }
+
+        // UPDATED: Now accepts a source parameter (defaults to AUTO)
+        async function fetchData(source = 'AUTO') {
+            try {
+                const res = await fetch(API_URL);
+                if (!res.ok) throw new Error('API Error');
+                const services = await res.json();
+                render(services);
+                
+                const now = moment().utcOffset(7).format('HH:mm:ss');
+                document.getElementById('last-updated-time').innerText = `Updated: ${now}`;
+                
+                // NEW: Log success with count
+                log(`[${source}] Refreshed ${services.length} services`);
+
+            } catch (e) {
+                console.error(e);
+                log(`[${source}] Connection failed: API unreachable`);
+            }
+        }
+
+        function render(services) {
+            const processedServices = services.map(s => {
+                const lastUpdate = moment.utc(s.last_update);
+                const now = moment.utc();
+                const diffSeconds = now.diff(lastUpdate, 'seconds');
+                
+                let computedStatus = 'operational';
+                if (s.status === 'down' || s.status === 'outage') {
+                    computedStatus = 'outage';
+                } else if (diffSeconds > 60) {
+                    computedStatus = 'stale';
+                }
+
+                return { ...s, computedStatus, lastUpdate };
+            });
+
+            const total = processedServices.length;
+            const ok = processedServices.filter(s => s.computedStatus === 'operational').length;
+            const down = processedServices.filter(s => s.computedStatus === 'outage').length;
+            const stale = processedServices.filter(s => s.computedStatus === 'stale').length;
+
+            document.getElementById('kpi-ok').innerHTML = `${ok} <span class="card-sub">/ ${total}</span>`;
+            document.getElementById('kpi-down').innerHTML = `${down} <span class="card-sub">/ ${total}</span>`;
+            document.getElementById('kpi-stale').innerHTML = `${stale} <span class="card-sub">/ ${total}</span>`;
+            
+            const uptime = total === 0 ? 0 : ((ok / total) * 100).toFixed(1);
+            document.getElementById('kpi-uptime').innerText = `${uptime}%`;
+            document.getElementById('uptime-bar').style.width = `${uptime}%`;
+
+            const list = document.getElementById('service-list');
+            list.innerHTML = '';
+            
+            processedServices.forEach(s => {
+                const row = document.createElement('div');
+                row.className = 'service-row';
+                
+                let badgeClass = 'badge-operational';
+                let iconClass = 'fa-check';
+                let label = 'OPERATIONAL';
+
+                if (s.computedStatus === 'outage') {
+                    badgeClass = 'badge-outage';
+                    iconClass = 'fa-times';
+                    label = 'OUTAGE';
+                } else if (s.computedStatus === 'stale') {
+                    badgeClass = 'badge-stale';
+                    iconClass = 'fa-exclamation-triangle';
+                    label = 'STALE / WARNING';
+                }
+
+                const displayTime = s.lastUpdate.utcOffset(7).format('YYYY-MM-DD HH:mm:ss');
+
+                row.innerHTML = `
+                    <div class="svc-info"><h3>${s.name}</h3><div class="svc-id">ID: ${s.displayId || s.id}</div></div>
+                    <div class="svc-meta">
+                        <div class="last-hb-label">Last Heartbeat (UTC+7)</div>
+                        <div class="last-hb-val">${displayTime}</div>
+                        <div class="badge ${badgeClass}"><i class="fas ${iconClass}"></i> ${label}</div>
+                    </div>`;
+                list.appendChild(row);
+            });
+
+            const okDeg = (ok / total) * 360;
+            const staleDeg = (stale / total) * 360;
+            const cGreen='#10b981', cYellow='#f59e0b', cRed='#ef4444';
+            document.getElementById('health-donut').style.background = `conic-gradient(${cGreen} 0deg ${okDeg}deg, ${cYellow} ${okDeg}deg ${okDeg + staleDeg}deg, ${cRed} ${okDeg + staleDeg}deg 360deg)`;
+        }
+
+        document.getElementById('auto-refresh').addEventListener('change', (e) => {
+            if(e.target.checked) { 
+                // UPDATED: Pass 'AUTO'
+                refreshInterval = setInterval(() => fetchData('AUTO'), 5000); 
+                log('Auto-refresh ON'); 
+            } else { 
+                clearInterval(refreshInterval); 
+                log('Auto-refresh OFF'); 
+            }
+        });
+
+        // Initial Load
+        fetchData('INIT');
+        refreshInterval = setInterval(() => fetchData('AUTO'), 5000);
+    </script>
+</body>
+</html>
