@@ -1,2 +1,21 @@
-node_modules
-*.env
+# --- Rust Backend ---
+# The build artifacts (can be 1GB+), never commit this
+backend/target/
+
+# --- Environment ---
+# Secrets and database passwords
+.env
+
+# --- Node.js (Frontend & Legacy) ---
+node_modules/
+npm-debug.log
+
+# --- IDEs & System ---
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+# --- Legacy Backup (Optional) ---
+# If you don't want to commit the old code
+backend_legacy/

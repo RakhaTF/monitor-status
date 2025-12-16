@@ -1,15 +1,28 @@
-FROM node:18-alpine AS builder
+# Stage 1: Build
+FROM rust:alpine as builder
 WORKDIR /app
-COPY package*.json ./
-COPY tsconfig.json ./
-RUN npm install
-COPY src ./src
-RUN npm run build
+# Install dependencies for compilation
+RUN apk add --no-cache musl-dev
 
-FROM node:18-alpine
+# Create empty shell project to cache dependencies
+COPY Cargo.toml Cargo.lock ./
+RUN mkdir src && echo "fn main() {}" > src/main.rs
+RUN cargo build --release
+
+# Build actual app
+COPY . .
+# Touch main.rs to force rebuild with new code
+RUN touch src/main.rs 
+RUN cargo build --release
+
+# Stage 2: Runtime
+FROM alpine:3.19
 WORKDIR /app
-COPY package*.json ./
-RUN npm install --production
-COPY --from=builder /app/dist ./dist
+# Copy the compiled binary from the builder stage
+COPY --from=builder /app/target/release/monitor-status-backend .
+
+# Expose port
 EXPOSE 3000
-CMD ["node", "dist/server.js"]
+
+# Run the binary
+CMD ["./monitor-status-backend"]

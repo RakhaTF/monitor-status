@@ -1,0 +1,24 @@
+[package]
+name = "monitor-status-backend"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Async Runtime
+tokio = { version = "1.0", features = ["full"] }
+
+# Web Framework
+axum = "0.7"
+tower-http = { version = "0.5", features = ["cors"] }
+
+# Database
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "mysql", "chrono"] }
+
+# Serialization (JSON)
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Utilities
+dotenvy = "0.15"       # .env file reading
+chrono = { version = "0.4", features = ["serde"] } # Date handling
+hex = "0.4"            # For the hex ID generation
