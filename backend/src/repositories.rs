@@ -14,7 +14,7 @@ impl MonitorRepository {
 
     pub async fn find_all(&self) -> Result<Vec<Monitor>, AppError> {
         let records = sqlx::query_as::<_, Monitor>(
-            "SELECT id, project_name, last_update, status FROM monitors",
+            "SELECT id, service, instance, description, last_update, vps FROM services_alert",
         )
         .fetch_all(&self.pool)
         .await?;

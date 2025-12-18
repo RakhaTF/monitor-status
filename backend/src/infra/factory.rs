@@ -9,21 +9,21 @@ pub struct DbConfig<'a> {
     pub password: &'a str,
     pub database: &'a str,
     pub port: u16,
-    pub pool_size: u32,
+    pub pool_size: u16,
 }
 
-use crate::config::AppConfig;
+use crate::{config::AppConfig, errors::AppError};
 
 // 2. The equivalent of `CreateDataSource`
 // We make this private (not pub) because only this module needs to know how to build it.
-async fn create_data_source(cfg: DbConfig<'_>) -> Result<MySqlPool, sqlx::Error> {
+async fn create_data_source(cfg: DbConfig<'_>) -> Result<MySqlPool, AppError> {
     let url = format!(
         "mysql://{}:{}@{}:{}/{}",
         cfg.username, cfg.password, cfg.host, cfg.port, cfg.database
     );
 
     let pool = MySqlPoolOptions::new()
-        .max_connections(cfg.pool_size)
+        .max_connections(cfg.pool_size.into())
         .acquire_timeout(Duration::from_secs(5))
         .connect(&url)
         .await?;
@@ -61,7 +61,7 @@ impl DbRegistry {
             password: &config.monitoring_pass,
             database: &config.monitoring_name,
             port: config.monitoring_port,
-            pool_size: 10,
+            pool_size: config.monitoring_pool_size,
         })
         .await
         .expect("Failed to create Monitoring DataSource");
@@ -71,7 +71,7 @@ impl DbRegistry {
         info!("event: application/boot/mysql, msg: Done...");
 
         Self {
-            monitoring_db: monitoring_pool
+            monitoring_db: monitoring_pool,
         }
     }
 }

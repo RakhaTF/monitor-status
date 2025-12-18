@@ -1,6 +1,6 @@
 use axum::Json;
 
-use crate::{errors::AppError, repositories::MonitorRepository, ServiceResponse};
+use crate::{errors::AppError, models::ServiceResponse, repositories::MonitorRepository};
 
 #[derive(Clone)]
 pub struct MonitorService {
@@ -23,11 +23,14 @@ impl MonitorService {
                 let diff_seconds = (now - row.last_update).num_seconds();
 
                 // Status Logic
-                let display_status = if row.status == "down" {
+                let display_status = if diff_seconds > 120 {
+                    // If no heartbeat for > 2 mins, it's DOWN
                     "outage".to_string()
-                } else if diff_seconds > 120 {
+                } else if diff_seconds > 60 {
+                    // If no heartbeat for > 1 min (but < 2 mins), it's STALE
                     "stale".to_string()
                 } else {
+                    // If heartbeat is within the last 60 seconds, it's OPERATIONAL
                     "operational".to_string()
                 };
 
@@ -43,7 +46,9 @@ impl MonitorService {
                 ServiceResponse {
                     id: row.id,
                     display_id,
-                    name: row.project_name,
+                    name: row.service,
+                    instance: row.instance,
+                    vps: row.vps,
                     last_update: row.last_update,
                     status: display_status,
                 }

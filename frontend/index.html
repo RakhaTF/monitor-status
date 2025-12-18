@@ -206,7 +206,7 @@
                 const displayTime = s.lastUpdate.utcOffset(7).format('YYYY-MM-DD HH:mm:ss');
 
                 row.innerHTML = `
-                    <div class="svc-info"><h3>${s.name}</h3><div class="svc-id">ID: ${s.displayId || s.id}</div></div>
+                    <div class="svc-info"><h3>${s.name} - ${s.instance} - ${s.vps}</h3><div class="svc-id">ID: ${s.displayId || s.id}</div></div>
                     <div class="svc-meta">
                         <div class="last-hb-label">Last Heartbeat (UTC+7)</div>
                         <div class="last-hb-val">${displayTime}</div>
