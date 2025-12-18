@@ -1,17 +1,13 @@
 services:
-  # 1. Backend API
+  # 1. Backend API (Rust)
   api:
     build: ./backend
     container_name: monitor_api
     restart: on-failure
     ports:
       - "3000:3000"
-    environment:
-      DB_HOST: host.docker.internal
-      DB_PORT: 3306
-      DB_USER: root
-      DB_PASSWORD: ""
-      DB_NAME: monitoring_db
+    env_file:
+      - .env
     networks:
       - monitor_net
 
